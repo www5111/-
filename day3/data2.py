@@ -17,6 +17,9 @@ def get_scholar_bibtex(search_query):
 
     参数:
         search_query (str): 要搜索的文章标题或查询字符串
+
+    返回:
+        str: BibTeX引用内容，如果失败则返回None
     """
     # 配置Chrome选项
     chrome_options = Options()
@@ -86,4 +89,102 @@ def get_scholar_bibtex(search_query):
 
             # 点击引用按钮
             print("正在点击引用按钮...")
-        print("\n未能获取BibTeX引用")
+            cite_button.click()
+            time.sleep(2)
+        except Exception as e:
+            print(f"未找到匹配的文章或引用按钮: {str(e)}")
+            return None
+
+        # 选择BibTeX格式
+        try:
+            bibtex_option = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.LINK_TEXT, "BibTeX"))
+            )
+            print("正在选择BibTeX格式...")
+            bibtex_option.click()
+            time.sleep(2)
+        except Exception as e:
+            print(f"找不到BibTeX选项: {str(e)}")
+            return None
+
+        # 获取BibTeX内容
+        try:
+            bibtex_content = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "pre"))
+            ).text
+            print("\n成功获取BibTeX引用:")
+            print(bibtex_content)
+
+            # 复制到剪贴板
+            try:
+                pyperclip.copy(bibtex_content)
+                print("\nBibTeX引用已复制到剪贴板")
+            except:
+                print("\n无法复制到剪贴板，请手动复制")
+
+            return bibtex_content
+        except Exception as e:
+            print(f"无法获取BibTeX内容: {str(e)}")
+            return None
+
+    except Exception as e:
+        print(f"发生错误: {str(e)}")
+        return None
+    finally:
+        # 关闭浏览器
+        if 'driver' in locals():
+            driver.quit()
+            print("浏览器已关闭")
+
+
+def process_multiple_articles(article_list):
+    """
+    处理多篇文章的BibTeX引用获取
+
+    参数:
+        article_list (list): 包含多篇文章标题的列表
+    """
+    results = {}
+
+    for article in article_list:
+        print(f"\n{'=' * 50}")
+        print(f"正在处理文章: {article}")
+        print(f"{'=' * 50}")
+
+        bibtex = get_scholar_bibtex(article)
+        if bibtex:
+            results[article] = bibtex
+        else:
+            results[article] = "未能获取BibTeX引用"
+
+        # 为了避免被Google封禁，添加延迟
+        time.sleep(5)
+
+    # 打印所有结果
+    print("\n\n所有文章处理完成:")
+    print("=" * 60)
+    for article, bibtex in results.items():
+        print(f"\n文章: {article}")
+        print("-" * 60)
+        print(bibtex)
+        print("=" * 60)
+
+    return results
+
+
+# 要搜索的文章列表
+article_list = [
+    "Automatic crater detection and age estimation for mare regions on the lunar surface,",
+    "The origin of planetary impactors in the inner solar system,",
+    "Deep learning based systems for crater detection: A review,",
+    "A preliminary study of classification method on lunar topography and landforms,",
+    "The CosmoQuest Moon mappers community science project: The effect of incidence angle on the Lunar surface crater distribution,",
+    "Fast r-cnn,",
+    "You only look once: Unified, real-time object detection,",
+    "Attention is all you need,",
+    "End-to-end object detection with transformers,"
+]
+
+# 使用示例
+if __name__ == "__main__":
+    all_results = process_multiple_articles(article_list)
